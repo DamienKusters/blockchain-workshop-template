@@ -7,7 +7,7 @@
           <span class="card open" v-else-if="open == true">Open!</span>
           <span class="card closed" v-else-if="open == false">Gesloten</span>
       </h1>
-      <!-- Connect to MetaMask Button -->
+      <!-- MetaMask Button -->
       <div v-if="open != null">
         <div>
           <img height="50" :src="require('../assets/metamask.svg')" />
@@ -26,7 +26,7 @@
       </div>
       <hr />
       <div>
-        <button  @click="buyPizza()">Bestel Pizza ({{pizzaCost}} ETH)</button>
+        <button :disabled="open == null" @click="buyPizza()">Bestel Pizza ({{pizzaCost}} ETH)</button>
         <p v-if="error" class="error">Je kan geen pizza kopen: '{{error}}'</p>
       </div>
     </div>
@@ -47,49 +47,40 @@ export default {
       account: null,
       error: null,
 
-      pizzaCost: "0.4"
+      pizzaCost: "0.7"
     }
   },
   mounted(){
-    var provider = new this.ethers.providers.JsonRpcProvider(this.blockchainUrl);
+    //This provider directly communicates with the blockchain on the url.
+    var provider = new this.ethers.providers.JsonRpcProvider(this.blockchainUrl); 
     this.createContract(provider);
+
+    //TODO: Set metamask listener
+
     this.load();
   },
   methods: {
     async load()
     {
-      //Example of reading from a Blockchain
+      //Example of reading from a Blockchain:
       this.open = await this.contract.getOpen();
-    },
-    async login()
-    {
-      try
-      {
-        const { ethereum } = window;
-        if (!ethereum)
-          return console.log("Make sure you have metamask!");
-        const accounts = await ethereum.request({ method: "eth_accounts" });
-        if (accounts.length !== 0)
-          this.accountAddress = accounts[0];
-        else
-          this.accountAddress = null;
-        return this.accountAddress;
-      } catch (error) { console.log(error); return null; }
     },
     async createContract(providerOrSigner)
     {
-      //Een provider kan 
+      //A provider provides read access to a Smart Contract.
+      //A signer can call both read and write functions to a Smart Contract.
       this.contract = markRaw(new this.ethers.Contract(this.address, this.abi, providerOrSigner));
     },
     async togglePizzeria()
     {
       var res = await this.contract.setOpen(!this.open);
-      await this.contract.provider.waitForTransaction(res['hash']);
-      this.open = await this.contract.getOpen();
+      await this.contract.provider.waitForTransaction(res['hash']);//This simply waits for the transaction to complete.
+      this.open = await this.contract.getOpen();//When the transaction is complete, ask the Smart Contract for the new state.
     },
     async buyPizza()
     {
       try {
+        //When we send an object with the value field {value:x} to a Smart Contract function, we can send some crypto over to the contract.
         var res = await this.contract.buyPizza({value: this.ethers.utils.parseEther(this.pizzaCost)});
         await this.contract.provider.waitForTransaction(res['hash']);
       } catch (e) {
@@ -101,18 +92,19 @@ export default {
     {
       const { ethereum } = window;
 
-      if(this.account == null)
-      {
-        try {
+      try {
+        if(this.account == null)
           this.account = await ethereum.request({method: "eth_requestAccounts"});
-        } catch (error) {
-          return;
-        }
+      } catch (error) {
+        return;
       }
 
+      //Because the website is now connected to MetaMask, a Wallet.
+      //We want to update the contract by replacing the provider with a signer.
+      // (The MetaMask wallet will become the signer)
+      //This allows us to use the full Smart Contract's functionalities, like modifications and sending transactions.
       const metamaskProvider = new this.ethers.providers.Web3Provider(ethereum);
       const signer = metamaskProvider.getSigner();
-
       this.createContract(signer);
     },
     convertToError(e)
@@ -123,7 +115,7 @@ export default {
       }
       else
       {
-        return e.toString().split("Error: ")[1].split(" (")[0];
+        return "De website is niet gekoppeld met een Wallet";
       }
     }
   }
