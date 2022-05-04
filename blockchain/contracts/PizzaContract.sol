@@ -22,14 +22,10 @@ contract PizzaContract {
 
   function buyPizza() external payable {
     require(open == true, "Pizzeria is closed");
-    require(msg.value == 0.7 ether, "A pizza costs 0.7 ETHER");
+    require(msg.value == 0.7 ether, "A pizza costs 0.7 ETHER");//msg.value = the amount of crypto send. | msg.sender = the crypto address that called the function.
 
-    payable(seller).transfer(msg.value);// Send ETH to the seller
+    payable(seller).transfer(msg.value);//Transfer ETHER to the seller
 
     sold++;
   }
-
-  //msg variable:
-  //msg.value = the amount of crypto send.
-  //msg.sender = the account address that called the function.
 }
