@@ -2,32 +2,33 @@
   <div>
     <header>
       <h1>
-          The Pizzeria is
+          De Pizzeria is
           <span class="card" v-if="open == null">...</span>
           <span class="card open" v-else-if="open == true">Open!</span>
-          <span class="card closed" v-else-if="open == false">Closed</span>
-          <!-- <span :class="{closed:true, open:this.open}">{{open ? "Open!" : "Closed..."}}</span> -->
+          <span class="card closed" v-else-if="open == false">Gesloten</span>
       </h1>
+      <!-- Connect to MetaMask Button -->
       <div v-if="open != null">
-        <div v-if="account">
+        <div>
           <img height="50" :src="require('../assets/metamask.svg')" />
           <br />
-          <div>{{account[0].substring(0,11) + "..."}}</div>
+          <div v-if="account">{{account[0].substring(0,11) + "..."}}</div>
+          <button v-else @click="connectToMetaMask()">MetaMask Login</button>
         </div>
-        <div v-else>
-          <img height="50" :src="require('../assets/metamask.svg')" />
-          <br />
-          <button @click="connectToMetaMask()">Connect to MetaMask</button>
-        </div>
-      </div>
-      <div>
-        <p>Blockchain: {{blockchainUrl}}</p>
-        <p>Address: {{this.address.substring(0,7) + "..."}}</p>
       </div>
     </header>
+
     <div class="content">
-      <p>This website will call the Smart Contract function 'getOpen()' to see if the contract is available and open the Pizzeria.</p>
-      <button v-if="account" @click="togglePizzeria()">{{open ? "Close Pizzeria" : "Open Pizzeria"}}</button>
+      <p>De website roept de functie 'getOpen()' aan in de 'PizzaContract' Smart Contract.</p>
+      <div v-if="open != null">
+        <button :disabled="!account" @click="togglePizzeria()">{{open ? "Sluit Pizzeria" : "Open Pizzeria"}}</button>
+        <p>Deze knop zal de 'setOpen()' Smart Contract functie aanroepen. <br/> Omdat 'setOpen()' een aanpassing is aan de inhoud van de Smart Contract, moeten de Gas fees worden betaald door het account dat het aanroept.</p>
+      </div>
+      <hr />
+      <div>
+        <button  @click="buyPizza()">Bestel Pizza ({{pizzaCost}} ETH)</button>
+        <p v-if="error" class="error">Je kan geen pizza kopen: '{{error}}'</p>
+      </div>
     </div>
   </div>
 </template>
@@ -44,6 +45,9 @@ export default {
       blockchainUrl: "http://127.0.0.1:7545",
       open: null,
       account: null,
+      error: null,
+
+      pizzaCost: "0.4"
     }
   },
   mounted(){
@@ -74,6 +78,7 @@ export default {
     },
     async createContract(providerOrSigner)
     {
+      //Een provider kan 
       this.contract = markRaw(new this.ethers.Contract(this.address, this.abi, providerOrSigner));
     },
     async togglePizzeria()
@@ -81,6 +86,16 @@ export default {
       var res = await this.contract.setOpen(!this.open);
       await this.contract.provider.waitForTransaction(res['hash']);
       this.open = await this.contract.getOpen();
+    },
+    async buyPizza()
+    {
+      try {
+        var res = await this.contract.buyPizza({value: this.ethers.utils.parseEther(this.pizzaCost)});
+        await this.contract.provider.waitForTransaction(res['hash']);
+      } catch (e) {
+        console.error(e);
+        this.error = this.convertToError(e);
+      }
     },
     async connectToMetaMask()
     {
@@ -99,6 +114,17 @@ export default {
       const signer = metamaskProvider.getSigner();
 
       this.createContract(signer);
+    },
+    convertToError(e)
+    {
+      if(e.data)
+      {
+        return e.data['message'].split(': revert')[1];
+      }
+      else
+      {
+        return e.toString().split("Error: ")[1].split(" (")[0];
+      }
     }
   }
 }
@@ -107,7 +133,7 @@ export default {
 <style scoped>
 header {
   display: grid;
-  grid-template-columns: 4fr 1fr 1fr;
+  grid-template-columns: 4fr 1fr;
   background: yellowgreen;
 }
 
@@ -128,5 +154,12 @@ header {
   max-width: 600px;
   margin: auto auto;
   padding: 10px;
+}
+
+.error {
+  color: darkred;
+
+  font-weight: bold;
+  text-decoration: underline;
 }
 </style>
