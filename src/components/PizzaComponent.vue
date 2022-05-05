@@ -26,16 +26,21 @@
       </div>
       <hr />
       <!-- Pizza lijst -->
+      <h2>Pizzas</h2>
       <div class="pizzaInventory">
-        <div v-for="pizza in pizzas" :key="pizza.name">
-          <img :src="tryToGetPizzaPicture(pizza.name)" alt="🍕" />
-          <h3>Pizza {{pizza.name}}</h3>
-          <button :disabled="open == null" @click="buyPizza(pizza.name)">Bestel Pizza {{pizza.name}}<br />({{pizzaCost}} ETH)</button>
-          <p v-if="contract" class="owner">{{pizza.owner}}</p>
-          <!-- TODO: Bought by -->
+        <div v-for="pizza in pizzas" :key="pizza">
+          <img :src="tryToGetPizzaPicture(pizza)" alt="🍕" />
+          <h3>Pizza {{pizza}}</h3>
+          <button @click="buyPizza(pizza)">Bestel Pizza {{pizza}}<br />({{pizzaCost}} ETH)</button>
         </div>
       </div>
       <p v-if="error" class="error">Je kan geen pizza kopen: '{{error}}'</p>
+      <hr />
+      <!-- Klanten lijst -->
+      <h2>Klanten</h2>
+      <div v-for="owner in pizzaOwners" :key="owner">
+        <p class="owner">{{owner}}</p>
+      </div>
     </div>
   </div>
 </template>
@@ -50,16 +55,15 @@ export default {
     return {
       blockchainUrl: "http://127.0.0.1:7545",
       contract: null,
+      account: null,//Logged in MetaMask Account
+
       open: null,
-      account: null,
       error: null,
 
-      pizzas: [
-        { name:"Pepperoni" },
-        { name:"Tonno" },
-        { name:"Veggie" },
-      ],
+      pizzas: ["Pepperoni", "Tonno", "Veggie",],
       pizzaCost: "0.7",
+
+      pizzaOwners: [],
     }
   },
   mounted(){
@@ -112,7 +116,7 @@ export default {
         return;
       }
 
-      //Because the website is now connected to MetaMask, a Wallet.
+      //Because the website is now connected to MetaMask; a Wallet.
       //We want to update the contract by replacing the provider with a signer.
       // (The MetaMask wallet will become the signer)
       //This allows us to use the full Smart Contract's functionalities, like modifications and sending transactions.
@@ -122,17 +126,18 @@ export default {
     },
     async getOwners()
     {
-      for (let i = 0; i < this.pizzas.length; i++) {
+      let owners = [];
+      for (const pizza of this.pizzas)
+      {
         try {
-          console.log(this.pizzas[i].name);
-          var val = await this.contract.getPizzaBuyer(this.pizzas[i].name);
-          this.pizzas[i].owner = val;
+          var val = await this.contract.getPizzaBuyer(pizza);
+          owners.push(pizza + ": " + val.toString().substring(0,11) + "...");
         } catch (error) {
-          console.log('e')
+          console.error(error);
         }
       }
 
-      this.pizzas = [...this.pizzas];
+      this.pizzaOwners = owners;
     },
     tryToGetPizzaPicture(pizza)
     {
@@ -144,13 +149,17 @@ export default {
     },
     convertToError(e)
     {
-      if(e.data)
+      if(e.data)//Error is coming from the Smart Contract
       {
-        return e.data['message'].split(': revert')[1];
+        return e.data['message'].split(': revert ')[1];
       }
-      else
+      else//Other errors, (likely MetaMask)
       {
-        return e.toString().substring(7).split(" (")[0];
+        var err = e.toString().substring(7).split(" (")[0];
+        if(err != " Object]")
+          return e.toString().substring(7).split(" (")[0];
+        else
+          return "Transactie geannuleerd";
       }
     }
   }

@@ -15,25 +15,24 @@ contract PizzaContract {
     return open;
   }
 
-  function setOpen(bool _open) external
+  function setOpen(bool value) external
   {
-    open = _open;
+    open = value;
   }
 
-  //TODO: Explain memory
   function buyPizza(string memory pizza) external payable {
-    require(open == true, "Pizzeria is closed");
+    //1.  Make sure this function call is allowed:
+    require(open == true, "Pizzeria is closed");//require(boolean, string) functions require the given boolean to be true, or the given string will be returned as error.
     require(msg.value == 0.7 ether, "A pizza costs 0.7 ETHER");//msg.value = the amount of crypto send.
+    require(pizzaSales[pizza] == address(0x0), "This pizza has been sold already");//address(0x0) means no address / empty address.
 
-    //address(0x0) means no address / empty address.
-    require(pizzaSales[pizza] == address(0x0), "This pizza has been sold already");
+    //2.  Transfer send ETHER to the seller:
+    payable(seller).transfer(msg.value);
 
-    payable(seller).transfer(msg.value);//Transfer ETHER to the seller
-
+    //3.  Save the sale in the Smart Contract:
     pizzaSales[pizza] = msg.sender;//msg.sender = the crypto address that called the function.
   }
 
-  //Function to be made by the attendees:
   function getPizzaBuyer(string memory pizza) external view returns(address)
   {
     require(pizzaSales[pizza] != address(0x0), "No one owns this pizza");
