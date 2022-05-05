@@ -8,7 +8,7 @@ contract PizzaContract {
 
   bool open = false;
 
-  uint sold = 0;
+  mapping(string => address) pizzaSales;//pizza name => buyer
 
   function getOpen() external view returns(bool)
   {
@@ -20,12 +20,23 @@ contract PizzaContract {
     open = _open;
   }
 
-  function buyPizza() external payable {
+  //TODO: Explain memory
+  function buyPizza(string memory pizza) external payable {
     require(open == true, "Pizzeria is closed");
-    require(msg.value == 0.7 ether, "A pizza costs 0.7 ETHER");//msg.value = the amount of crypto send. | msg.sender = the crypto address that called the function.
+    require(msg.value == 0.7 ether, "A pizza costs 0.7 ETHER");//msg.value = the amount of crypto send.
+
+    //address(0x0) means no address / empty address.
+    require(pizzaSales[pizza] == address(0x0), "This pizza has been sold already");
 
     payable(seller).transfer(msg.value);//Transfer ETHER to the seller
 
-    sold++;
+    pizzaSales[pizza] = msg.sender;//msg.sender = the crypto address that called the function.
+  }
+
+  //Function to be made by the attendees:
+  function getPizzaBuyer(string memory pizza) external view returns(address)
+  {
+    require(pizzaSales[pizza] != address(0x0), "No one owns this pizza");
+    return pizzaSales[pizza];
   }
 }

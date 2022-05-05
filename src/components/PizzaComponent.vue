@@ -7,7 +7,7 @@
           <span class="card open" v-else-if="open == true">Open!</span>
           <span class="card closed" v-else-if="open == false">Gesloten</span>
       </h1>
-      <!-- MetaMask Button -->
+      <!-- MetaMask -->
       <div v-if="open != null">
         <div>
           <img height="50" :src="require('../assets/metamask.svg')" />
@@ -25,10 +25,17 @@
         <p>Deze knop zal de 'setOpen()' Smart Contract functie aanroepen. <br/> Omdat 'setOpen()' een aanpassing is aan de inhoud van de Smart Contract, moeten de Gas fees worden betaald door het account dat het aanroept.</p>
       </div>
       <hr />
-      <div>
-        <button :disabled="open == null" @click="buyPizza()">Bestel Pizza ({{pizzaCost}} ETH)</button>
-        <p v-if="error" class="error">Je kan geen pizza kopen: '{{error}}'</p>
+      <!-- Pizza lijst -->
+      <div class="pizzaInventory">
+        <div v-for="pizza in pizzas" :key="pizza.name">
+          <img :src="tryToGetPizzaPicture(pizza.name)" alt="🍕" />
+          <h3>Pizza {{pizza.name}}</h3>
+          <button :disabled="open == null" @click="buyPizza(pizza.name)">Bestel Pizza {{pizza.name}}<br />({{pizzaCost}} ETH)</button>
+          <p v-if="contract" class="owner">{{pizza.owner}}</p>
+          <!-- TODO: Bought by -->
+        </div>
       </div>
+      <p v-if="error" class="error">Je kan geen pizza kopen: '{{error}}'</p>
     </div>
   </div>
 </template>
@@ -41,13 +48,18 @@ export default {
   data()
   {
     return {
-      contract: null,
       blockchainUrl: "http://127.0.0.1:7545",
+      contract: null,
       open: null,
       account: null,
       error: null,
 
-      pizzaCost: "0.7"
+      pizzas: [
+        { name:"Pepperoni" },
+        { name:"Tonno" },
+        { name:"Veggie" },
+      ],
+      pizzaCost: "0.7",
     }
   },
   mounted(){
@@ -55,7 +67,7 @@ export default {
     var provider = new this.ethers.providers.JsonRpcProvider(this.blockchainUrl); 
     this.createContract(provider);
 
-    //TODO: Set metamask listener
+    this.getOwners();
 
     this.load();
   },
@@ -77,11 +89,12 @@ export default {
       await this.contract.provider.waitForTransaction(res['hash']);//This simply waits for the transaction to complete.
       this.open = await this.contract.getOpen();//When the transaction is complete, ask the Smart Contract for the new state.
     },
-    async buyPizza()
+    async buyPizza(name)
     {
+      this.error = null;
       try {
         //When we send an object with the value field {value:x} to a Smart Contract function, we can send some crypto over to the contract.
-        var res = await this.contract.buyPizza({value: this.ethers.utils.parseEther(this.pizzaCost)});
+        var res = await this.contract.buyPizza(name, {value: this.ethers.utils.parseEther(this.pizzaCost)});
         await this.contract.provider.waitForTransaction(res['hash']);
       } catch (e) {
         console.error(e);
@@ -107,6 +120,28 @@ export default {
       const signer = metamaskProvider.getSigner();
       this.createContract(signer);
     },
+    async getOwners()
+    {
+      for (let i = 0; i < this.pizzas.length; i++) {
+        try {
+          console.log(this.pizzas[i].name);
+          var val = await this.contract.getPizzaBuyer(this.pizzas[i].name);
+          this.pizzas[i].owner = val;
+        } catch (error) {
+          console.log('e')
+        }
+      }
+
+      this.pizzas = [...this.pizzas];
+    },
+    tryToGetPizzaPicture(pizza)
+    {
+      try {
+        return require('../assets/pizzas/'+pizza+'.png');
+      } catch (error) {
+        return "";
+      }
+    },
     convertToError(e)
     {
       if(e.data)
@@ -115,7 +150,7 @@ export default {
       }
       else
       {
-        return "De website is niet gekoppeld met een Wallet";
+        return e.toString().substring(7).split(" (")[0];
       }
     }
   }
@@ -150,8 +185,24 @@ header {
 
 .error {
   color: darkred;
-
   font-weight: bold;
   text-decoration: underline;
+}
+
+.owner {
+  color: green;
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.pizzaInventory {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+.pizzaInventory div {
+  padding: 10px;
+}
+.pizzaInventory img {
+  max-width: 90%;
 }
 </style>
