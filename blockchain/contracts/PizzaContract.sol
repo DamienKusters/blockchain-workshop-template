@@ -23,19 +23,19 @@ contract PizzaContract {
   function buyPizza(string memory pizza) external payable {
     //1.  Make sure this function call is allowed:
     require(open == true, "Pizzeria is closed");//require(boolean, string) functions require the given boolean to be true, or the given string will be returned as error.
-    require(msg.value == 0.7 ether, "A pizza costs 0.7 ETHER");//msg.value = the amount of crypto send.
+    require(msg.value == 0.7 ether, "A pizza costs 0.7 ETHER");//'msg.value' = the amount of crypto send.
     require(pizzaSales[pizza] == address(0x0), "This pizza has been sold already");//address(0x0) means no address / empty address.
 
-    //2.  Transfer send ETHER to the seller:
+    //2.  Transfer provided ETHER to the seller:
     payable(seller).transfer(msg.value);
 
     //3.  Save the sale in the Smart Contract:
-    pizzaSales[pizza] = msg.sender;//msg.sender = the crypto address that called the function.
+    pizzaSales[pizza] = msg.sender;
   }
 
-  function getPizzaBuyer(string memory pizza) external view returns(address)
-  {
-    require(pizzaSales[pizza] != address(0x0), "No one owns this pizza");
-    return pizzaSales[pizza];
-  }
+  //TODO:
+  //Create a function that:
+  //  - Takes the pizza name as a parameter.
+  //  - Checks if the send pizza name exists in the Smart Contract.
+  //  - Returns the crypto address that has bought that pizza.
 }

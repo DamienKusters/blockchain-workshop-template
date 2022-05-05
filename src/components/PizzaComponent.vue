@@ -3,7 +3,7 @@
     <header>
       <h1>
           De Pizzeria is
-          <span class="card" v-if="open == null">...</span>
+          <span class="card" v-if="open == null">Offline...</span>
           <span class="card open" v-else-if="open == true">Open!</span>
           <span class="card closed" v-else-if="open == false">Gesloten</span>
       </h1>
@@ -19,8 +19,13 @@
     </header>
 
     <div class="content">
-      <p>De website roept de functie 'getOpen()' aan in de 'PizzaContract' Smart Contract.</p>
-      <div v-if="open != null">
+      <p v-if="open == null">
+        De website probeert te communiceren met de Ganache test blockchain.
+        <br />
+        Hier probeert hij de functie 'getOpen()' aan te roepen in de Smart Contract (PizzaContract).
+      </p>
+      <div v-else>
+        <p>De website probeert de functie 'getOpen()' aan te roepen in de Smart Contract (PizzaContract).</p>
         <button :disabled="!account" @click="togglePizzeria()">{{open ? "Sluit Pizzeria" : "Open Pizzeria"}}</button>
         <p>Deze knop zal de 'setOpen()' Smart Contract functie aanroepen. <br/> Omdat 'setOpen()' een aanpassing is aan de inhoud van de Smart Contract, moeten de Gas fees worden betaald door het account dat het aanroept.</p>
       </div>
@@ -46,50 +51,50 @@
 </template>
 
 <script>
-import { markRaw } from '@vue/reactivity';
+import { markRaw } from '@vue/reactivity';//This is required by Vue.js 3
 
 export default {
   inject: ["ethers", "address", "abi"],
   data()
   {
     return {
-      blockchainUrl: "http://127.0.0.1:7545",
+      blockchainUrl: "http://127.0.0.1:7545",//Ganache URL
       contract: null,
-      account: null,//Logged in MetaMask Account
+      account: null,//Logged-in MetaMask Account
 
       open: null,
       error: null,
 
-      pizzas: ["Pepperoni", "Tonno", "Veggie",],
-      pizzaCost: "0.7",
+      pizzas: ["Pepperoni", "Tonno", "Veggie"],
+      pizzaCost: "0.2",
 
       pizzaOwners: [],
     }
   },
-  mounted(){
-    //This provider directly communicates with the blockchain on the url.
-    var provider = new this.ethers.providers.JsonRpcProvider(this.blockchainUrl); 
+  mounted()
+  {
+    //This provider directly connects to the Ganache blockchain.
+    var provider = new this.ethers.providers.JsonRpcProvider(this.blockchainUrl);
     this.createContract(provider);
-
-    this.getOwners();
 
     this.load();
   },
   methods: {
-    async load()
-    {
-      //Example of reading from a Blockchain:
-      this.open = await this.contract.getOpen();
-    },
     async createContract(providerOrSigner)
     {
       //A provider provides read access to a Smart Contract.
       //A signer can call both read and write functions to a Smart Contract.
       this.contract = markRaw(new this.ethers.Contract(this.address, this.abi, providerOrSigner));
     },
+    async load()
+    {
+      //Example of reading from a Smart Contract:
+      this.open = await this.contract.getOpen();
+    },
     async togglePizzeria()
     {
-      var res = await this.contract.setOpen(!this.open);
+      //Example of writing to a Smart Contract:
+      var res = await this.contract.setOpen(!this.open);//We will request to open/close the pizzeria whatever it is currently not.
       await this.contract.provider.waitForTransaction(res['hash']);//This simply waits for the transaction to complete.
       this.open = await this.contract.getOpen();//When the transaction is complete, ask the Smart Contract for the new state.
     },
@@ -98,11 +103,10 @@ export default {
       this.error = null;
       try {
         //When we send an object with the value field {value:x} to a Smart Contract function, we can send some crypto over to the contract.
-        var res = await this.contract.buyPizza(name, {value: this.ethers.utils.parseEther(this.pizzaCost)});
-        await this.contract.provider.waitForTransaction(res['hash']);
+        await this.contract.buyPizza(name, {value: this.ethers.utils.parseEther(this.pizzaCost)});
       } catch (e) {
         console.error(e);
-        this.error = this.convertToError(e);
+        this.error = this.convertToError(e);//We will show a readable version of the error message.
       }
     },
     async connectToMetaMask()
@@ -124,21 +128,13 @@ export default {
       const signer = metamaskProvider.getSigner();
       this.createContract(signer);
     },
-    async getOwners()
-    {
-      let owners = [];
-      for (const pizza of this.pizzas)
-      {
-        try {
-          var val = await this.contract.getPizzaBuyer(pizza);
-          owners.push(pizza + ": " + val.toString().substring(0,11) + "...");
-        } catch (error) {
-          console.error(error);
-        }
-      }
 
-      this.pizzaOwners = owners;
-    },
+    //TODO:
+    //Create a function that:
+    //  - Fills the 'pizzaOwners' array with strings describing all bought pizzas and their owners.
+    //  Format example: 'Pizza [pizza name] is bought by: [crypto address]'
+
+    //Helper functions:
     tryToGetPizzaPicture(pizza)
     {
       try {
@@ -155,6 +151,9 @@ export default {
       }
       else//Other errors, (likely MetaMask)
       {
+        if(this.open == null)
+          return "Er is geen verbinding met de PizzaContract";
+
         var err = e.toString().substring(7).split(" (")[0];
         if(err != " Object]")
           return e.toString().substring(7).split(" (")[0];
@@ -179,12 +178,8 @@ header {
   padding: 10px;
   border-radius: 20px;
 }
-.open {
-  background-color: green;
-}
-.closed {
-  background-color: darkred;
-}
+.open { background-color: green; }
+.closed { background-color: darkred; }
 
 .content {
   max-width: 600px;
@@ -208,10 +203,6 @@ header {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
 }
-.pizzaInventory div {
-  padding: 10px;
-}
-.pizzaInventory img {
-  max-width: 90%;
-}
+.pizzaInventory div { padding: 10px; }
+.pizzaInventory img { max-width: 90%; }
 </style>
