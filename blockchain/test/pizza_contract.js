@@ -6,22 +6,22 @@ contract("PizzaContract", function () {
     contract = await PizzaContract.deployed();
   });
 
-  it("should be open", async function () {
+  it("should be closed on startup", async function () {
     var online = await contract.getOpen();
-    return assert.isTrue(online);
+    return assert.isTrue(online == false);
   });
 
-  it("should be able to close", async function () {
+  it("should be able to open", async function () {
     try {
-      await contract.setOpen(false);
+      await contract.setOpen(true);
       assert.isTrue(true);
     } catch (error) {
       assert.isTrue(false);
     }
   });
 
-  it("should be closed", async function () {
+  it("should be open", async function () {
     var online = await contract.getOpen();
-    return assert.isTrue(online == false);
+    return assert.isTrue(online == true);
   });
 });
