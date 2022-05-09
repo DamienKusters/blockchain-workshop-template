@@ -80,16 +80,16 @@ export default {
     this.load();
   },
   methods: {
+    async load()
+    {
+      //Example of reading from a Smart Contract:
+      this.open = await this.contract.getOpen();
+    },
     async createContract(providerOrSigner)
     {
       //A provider provides read access to a Smart Contract.
       //A signer can call both read and write functions to a Smart Contract.
       this.contract = markRaw(new this.ethers.Contract(this.address, this.abi, providerOrSigner));
-    },
-    async load()
-    {
-      //Example of reading from a Smart Contract:
-      this.open = await this.contract.getOpen();
     },
     async togglePizzeria()
     {
