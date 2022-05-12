@@ -153,9 +153,11 @@ export default {
       {
         if(this.open == null)
           return "Er is geen verbinding met de PizzaContract";
-
         var err = e.toString().substring(7).split(" (")[0];
-        if(err != " Object]")
+        
+        if (err.includes('a signer'))
+          return "Login met Metamask";
+        else if(err != " Object]")
           return e.toString().substring(7).split(" (")[0];
         else
           return "Transactie geannuleerd";
